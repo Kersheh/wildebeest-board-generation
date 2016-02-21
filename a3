@@ -1,0 +1,103 @@
+#!/usr/bin/python
+
+import sys, fileinput
+
+WHITE_ID = { S, O, E, J, C, G, X, H, Z, K, W, P, B, N, R }
+BLACK_ID = { s, o, e, j, c, g, x, h, z, k, w, p, b, n, r }
+
+## An instance of a piece in Wildebeest
+class Piece(object):
+    def __init__(self, piece_id, x, y):
+        self.id = piece_id
+        self.x = x
+        self.y = y
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash(self.__repr__())
+
+    def __repr__(self):
+        return "Piece({0}, {1}, {2})".format(self.id, self.x, self.y)
+
+## An instance of a board of Wildebeeest
+class Wildebeest(object):
+    def __init__(self, player_turn, pieces, int_1, int_2, int_3):
+        self.player_turn = player_turn
+        self.pieces = pieces
+        self.int_1 = int_1
+        self.int_2 = int_2
+        self.int_3 = int_3
+
+    def __eq__(self, other):
+        return self.__repr__() == other.__repr__()
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash(self.__repr__())
+
+    def __repr__(self):
+        s = self.player_turn + "\n"
+        board = self.get_board()
+        for line in board:
+            for tile in line:
+                s += "{0}".format(tile)
+            s += "\n"
+        s += self.int_1 + "\n" + self.int_2 + "\n" + self.int_3 + "\n"
+        return s
+
+    # return board as 2D array
+    def get_board(self):
+        board = [["." for i in range(11)] for j in range(11)]
+        board[3][1] = "*"
+        board[3][9] = "*"
+        board[5][5] = "#"
+        board[7][1] = "*"
+        board[7][9] = "*"
+        for piece in self.pieces:
+            board[piece.x][piece.y] = piece.id
+        return board
+
+# load board from stdin
+def load_board():
+    pieces = []
+    i = -1
+    for line in fileinput.input():
+        if i is 14:
+            break
+        if i is -1:
+            player_turn = line[0]
+            i += 1
+            continue
+        if i is 11:
+            int_1 = line[:len(line) - 1]
+            i += 1
+            continue
+        if i is 12:
+            int_2 = line[:len(line) - 1]
+            i += 1
+            continue
+        if i is 13:
+            int_3 = line[:len(line) - 1]
+            i += 1
+            continue
+        for j in range(len(line) - 1):
+            if line[j] is "." or line[j] is "*" or line[j] is "#":
+                continue
+            pieces.append(Piece(line[j], i, j))
+        i += 1
+    return Wildebeest(player_turn, pieces, int_1, int_2, int_3)
+
+if __name__ == '__main__':
+    if len(sys.argv) != 1:
+        print "usage: ./a3 < [board_file.txt]"
+        sys.exit(0)
+    
+    wildebeest = load_board()
+    print wildebeest
