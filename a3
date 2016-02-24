@@ -2,8 +2,8 @@
 
 import sys, fileinput
 
-WHITE_ID = { S, O, E, J, C, G, X, H, Z, K, W, P, B, N, R }
-BLACK_ID = { s, o, e, j, c, g, x, h, z, k, w, p, b, n, r }
+WHITE_ID = { "S", "O", "E", "J", "C", "G", "X", "H", "Z", "K", "W", "P", "B", "N", "R" }
+BLACK_ID = { "s", "o", "e", "j", "c", "g", "x", "h", "z", "k", "w", "p", "b", "n", "r" }
 
 ## An instance of a piece in Wildebeest
 class Piece(object):
@@ -64,6 +64,217 @@ class Wildebeest(object):
             board[piece.x][piece.y] = piece.id
         return board
 
+    # returns list of coordinates a piece can move based on its current location
+    # note: accounts for collision with friendly pieces
+    def legal_piece_coordinates(self, piece, friendly_pieces):
+        board = self.get_board()
+        coordinates = []
+
+        # moves like a king
+        if piece.id is "S" or piece.id is "s" or piece.id is "O" or piece.id is "o" or \
+           piece.id is "E" or piece.id is "e" or piece.id is "J" or piece.id is "j" or \
+           piece.id is "C" or piece.id is "c" or piece.id is "G" or piece.id is "g" or \
+           piece.id is "Z" or piece.id is "z" or piece.id is "K" or piece.id is "k":
+            for i in range(-1, 2):
+                for j in range(-1, 2):
+                    # skip out-of-bounds coordinates
+                    if piece.x + i < 0 or piece.x + i > 10 or \
+                       piece.y + j < 0 or piece.y + j > 10:
+                        continue
+                    # skip current coordinate
+                    if i is 0 and j is 0:
+                        continue
+                    # skip friendly pieces (except Gorilla)
+                    if piece.id is not "G" and piece.id is not "g":
+                        if board[piece.x + i][piece.y + j] in friendly_pieces:
+                            continue
+                    coordinates.append((piece.x + i, piece.y + j))
+
+        # moves like a knight
+        if piece.id is "E" or piece.id is "e" or piece.id is "N" or piece.id is "n":
+            for i in range(-1, 2, 2):
+                for j in range(-2, 3, 4):
+                    if piece.x + i < 0 or piece.x + i > 10 or \
+                       piece.y + j < 0 or piece.y + j > 10:
+                        pass
+                    else:
+                        if board[piece.x + i][piece.y + j] not in friendly_pieces:
+                            coordinates.append((piece.x + i, piece.y + j))
+                    if piece.x + j < 0 or piece.x + j > 10 or \
+                       piece.y + i < 0 or piece.y + i > 10:
+                        pass
+                    else:
+                        if board[piece.x + j][piece.y + i] not in friendly_pieces:
+                            coordinates.append((piece.x + j, piece.y + i))
+
+        # moves like a golf cart (uncharged)
+        if piece.id is "X" or piece.id is "x":
+            if piece.y is not 0 and board[piece.x][piece.y - 1] not in friendly_pieces:
+                coordinates.append((piece.x, piece.y - 1))
+            if piece.y is not 10 and board[piece.x][piece.y + 1] not in friendly_pieces:
+                coordinates.append((piece.x, piece.y + 1))
+
+        # moves like a bishop (cuts off when path is blocked)
+        if piece.id is "W" or piece.id is "w" or piece.id is "B" or piece.id is "b" or \
+           piece.id is "E" or piece.id is "e":
+            up_left, up_right, down_left, down_right = True, True, True, True
+            for i in range(1, 11):
+                if up_left:
+                    if piece.x - i < 0 or piece.y - i < 0 or \
+                       board[piece.x - i][piece.y - i] in friendly_pieces:
+                        up_left = False
+                    else:
+                        coordinates.append((piece.x - i, piece.y - i))
+                        # if enemy piece found, restrict further movement
+                        if board[piece.x - i][piece.y - i] in WHITE_ID or \
+                           board[piece.x - i][piece.y - i] in BLACK_ID:
+                            up_left = False
+                if up_right:
+                    if piece.x - i < 0 or piece.y + i > 10 or \
+                       board[piece.x - i][piece.y + i] in friendly_pieces:
+                        up_right = False
+                    else:
+                        coordinates.append((piece.x - i, piece.y + i))
+                        # if enemy piece found, restrict further movement
+                        if board[piece.x - i][piece.y + i] in WHITE_ID or \
+                           board[piece.x - i][piece.y + i] in BLACK_ID:
+                            up_right = False
+                if down_left:
+                    if piece.x + i > 10 or piece.y - i < 0 or \
+                       board[piece.x + i][piece.y - i] in friendly_pieces:
+                        down_left = False
+                    else:
+                        coordinates.append((piece.x + i, piece.y - i))
+                        # if enemy piece found, restrict further movement
+                        if board[piece.x + i][piece.y - i] in WHITE_ID or \
+                           board[piece.x + i][piece.y - i] in BLACK_ID:
+                            down_left = False
+                if down_right:
+                    if piece.x + i > 10 or piece.y + i > 10 or \
+                       board[piece.x + i][piece.y + i] in friendly_pieces:
+                        down_right = False
+                    else:
+                        coordinates.append((piece.x + i, piece.y + i))
+                        # if enemy piece found, restrict further movement
+                        if board[piece.x + i][piece.y + i] in WHITE_ID or \
+                           board[piece.x + i][piece.y + i] in BLACK_ID:
+                            down_right = False
+
+        # moves like a pawn (white side)
+        if piece.id is "P" and board[piece.x + 1][piece.y] not in WHITE_ID and \
+           board[piece.x + 1][piece.y] not in BLACK_ID:
+            if piece.x is 1 and board[piece.x + 2][piece.y] not in WHITE_ID and \
+               board[piece.x + 2][piece.y] not in BLACK_ID:
+                coordinates.append((piece.x + 2, piece.y))
+            if piece.x is not 10:
+                coordinates.append((piece.x + 1, piece.y))
+
+        # moves like a pawn (black side)
+        if piece.id is "p" and board[piece.x - 1][piece.y] not in WHITE_ID and \
+           board[piece.x - 1][piece.y] not in BLACK_ID:
+            if piece.x is 9 and board[piece.x - 2][piece.y] not in WHITE_ID and \
+               board[piece.x - 2][piece.y] not in BLACK_ID:
+                coordinates.append((piece.x - 2, piece.y))
+            if piece.x is not 0:
+                coordinates.append((piece.x - 1, piece.y))
+
+        # moves like a rook (cuts off when path is blocked)
+        if piece.id is "R" or piece.id is "r" or piece.id is "E" or piece.id is "e":
+            up, right, down, left = True, True, True, True
+            for i in range(1, 11):
+                if up:
+                    if piece.x - i < 0 or board[piece.x - i][piece.y] in friendly_pieces:
+                        up = False
+                    else:
+                        coordinates.append((piece.x - i, piece.y))
+                        # if enemy piece found, restrict further movement
+                        if board[piece.x - i][piece.y] in WHITE_ID or \
+                           board[piece.x - i][piece.y] in BLACK_ID:
+                            up = False
+                if right:
+                    if piece.y + i > 10 or board[piece.x][piece.y + i] in friendly_pieces:
+                        right = False
+                    else:
+                        coordinates.append((piece.x, piece.y + i))
+                        # if enemy piece found, restrict further movement
+                        if board[piece.x][piece.y + i] in WHITE_ID or \
+                           board[piece.x][piece.y + i] in BLACK_ID:
+                            right = False
+                if down:
+                    if piece.x + i > 10 or board[piece.x + i][piece.y] in friendly_pieces:
+                        down = False
+                    else:
+                        coordinates.append((piece.x + i, piece.y))
+                        # if enemy piece found, restrict further movement
+                        if board[piece.x + i][piece.y] in WHITE_ID or \
+                           board[piece.x + i][piece.y] in BLACK_ID:
+                            down = False
+                if left:
+                    if piece.y - i < 0 or board[piece.x][piece.y - i] in friendly_pieces:
+                        left = False
+                    else:
+                        coordinates.append((piece.x, piece.y - i))
+                        # if enemy piece found, restrict further movement
+                        if board[piece.x][piece.y - i] in WHITE_ID or \
+                           board[piece.x][piece.y - i] in BLACK_ID:
+                            left = False
+        return coordinates
+
+    # generator function yields boards for every possible move
+    def possible_moves(self):
+        board = self.get_board()
+        if self.player_turn is "W":
+            friendly_pieces = WHITE_ID
+            enemy_pieces = BLACK_ID
+        if self.player_turn is "B":
+            friendly_pieces = BLACK_ID
+            enemy_pieces = WHITE_ID
+
+        for piece in self.pieces:
+            if piece.id in friendly_pieces:
+                # serpent
+                if piece.id is "S" or piece.id is "s":
+                    print "{0}: {1}".format(piece.id, self.legal_piece_coordinates(piece, friendly_pieces))
+                # old woman
+                if piece.id is "O" or piece.id is "o":
+                    print "{0}: {1}".format(piece.id, self.legal_piece_coordinates(piece, friendly_pieces))
+                # grand empress
+                if piece.id is "E" or piece.id is "e":
+                    print "{0}: {1}".format(piece.id, self.legal_piece_coordinates(piece, friendly_pieces))
+                # prince joey
+                if piece.id is "J" or piece.id is "j":
+                    print "{0}: {1}".format(piece.id, self.legal_piece_coordinates(piece, friendly_pieces))
+                # catapult
+                if piece.id is "C" or piece.id is "c":
+                    print "{0}: {1}".format(piece.id, self.legal_piece_coordinates(piece, friendly_pieces))
+                # gorilla
+                if piece.id is "G" or piece.id is "g":
+                    print "{0}: {1}".format(piece.id, self.legal_piece_coordinates(piece, friendly_pieces))
+                # golf cart
+                if piece.id is "X" or piece.id is "x":
+                    print "{0}: {1}".format(piece.id, self.legal_piece_coordinates(piece, friendly_pieces))
+                # beekeeper
+                if piece.id is "Z" or piece.id is "z":
+                    print "{0}: {1}".format(piece.id, self.legal_piece_coordinates(piece, friendly_pieces))
+                # king
+                if piece.id is "K" or piece.id is "k":
+                    print "{0}: {1}".format(piece.id, self.legal_piece_coordinates(piece, friendly_pieces))
+                # king with a jet pack
+                if piece.id is "W" or piece.id is "w":
+                    print "{0}: {1}".format(piece.id, self.legal_piece_coordinates(piece, friendly_pieces))
+                # pawn
+                if piece.id is "P" or piece.id is "p":
+                    print "{0}: {1}".format(piece.id, self.legal_piece_coordinates(piece, friendly_pieces))
+                # bishop
+                if piece.id is "B" or piece.id is "b":
+                    print "{0}: {1}".format(piece.id, self.legal_piece_coordinates(piece, friendly_pieces))
+                # knight
+                if piece.id is "N" or piece.id is "n":
+                    print "{0}: {1}".format(piece.id, self.legal_piece_coordinates(piece, friendly_pieces))
+                # rook
+                if piece.id is "R" or piece.id is "r":
+                    print "{0}: {1}".format(piece.id, self.legal_piece_coordinates(piece, friendly_pieces))
+
 # load board from stdin
 def load_board():
     pieces = []
@@ -72,25 +283,18 @@ def load_board():
         if i is 14:
             break
         if i is -1:
-            player_turn = line[0]
-            i += 1
-            continue
-        if i is 11:
-            int_1 = line[:len(line) - 1]
-            i += 1
-            continue
-        if i is 12:
-            int_2 = line[:len(line) - 1]
-            i += 1
-            continue
-        if i is 13:
-            int_3 = line[:len(line) - 1]
-            i += 1
-            continue
-        for j in range(len(line) - 1):
-            if line[j] is "." or line[j] is "*" or line[j] is "#":
-                continue
-            pieces.append(Piece(line[j], i, j))
+            player_turn = line.rstrip()
+        elif i is 11:
+            int_1 = line.rstrip()
+        elif i is 12:
+            int_2 = line.rstrip()
+        elif i is 13:
+            int_3 = line.rstrip()
+        else:
+            for j in range(len(line) - 1):
+                if line[j] is "." or line[j] is "*" or line[j] is "#":
+                    continue
+                pieces.append(Piece(line[j], i, j))
         i += 1
     return Wildebeest(player_turn, pieces, int_1, int_2, int_3)
 
@@ -101,3 +305,4 @@ if __name__ == '__main__':
     
     wildebeest = load_board()
     print wildebeest
+    wildebeest.possible_moves()
