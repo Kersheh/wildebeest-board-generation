@@ -4,6 +4,7 @@ import sys, fileinput
 
 WHITE_ID = { "S", "O", "E", "J", "C", "G", "X", "H", "Z", "K", "W", "P", "B", "N", "R" }
 BLACK_ID = { "s", "o", "e", "j", "c", "g", "x", "h", "z", "k", "w", "p", "b", "n", "r" }
+BIO_ID = { "S", "s", "O", "o", "E", "e", "J", "j", "G", "g", "Z", "z", "K", "k", "W", "w", "P", "p", "B", "b", "N", "n", "R", "r" }
 
 ## An instance of a piece in Wildebeest
 class Piece(object):
@@ -64,11 +65,39 @@ class Wildebeest(object):
             board[piece.x][piece.y] = piece.id
         return board
 
+    # checks if piece is paralyzed
+    def is_paralyzed(self, piece):
+        board = self.get_board()
+        if piece.id in WHITE_ID:
+            friendly_pieces = WHITE_ID
+            enemy_pieces = BLACK_ID
+        else:
+            friendly_pieces = BLACK_ID
+            enemy_pieces = WHITE_ID
+
+        for i in range(-1, 2):
+            for j in range(-1, 2):
+                # skip out-of-bounds coordinates
+                if piece.x + i < 0 or piece.x + i > 10 or \
+                   piece.y + j < 0 or piece.y + j > 10:
+                    continue
+                if board[piece.x + i][piece.y + j] in enemy_pieces:
+                    if board[piece.x + i][piece.y + j] is "Z" or \
+                       board[piece.x + i][piece.y + j] is "z":
+                        return True
+        return False
+
     # returns list of coordinates a piece can move based on its current location
     # note: accounts for collision with friendly pieces
     def legal_piece_coordinates(self, piece, friendly_pieces):
         board = self.get_board()
         coordinates = []
+
+        # skip piece if paralyzed by enemy Beekeeper
+        if piece.id is not "X" and piece.id is not "x" and \
+           piece.id is not "H" and piece.id is not "h":
+            if self.is_paralyzed(piece):
+                return coordinates
 
         # moves like a king
         if piece.id is "S" or piece.id is "s" or piece.id is "O" or piece.id is "o" or \
@@ -220,13 +249,31 @@ class Wildebeest(object):
                             left = False
         return coordinates
 
+    # get Piece object belonging to board at given coordinate
+    def get_piece(self, x, y):
+        for piece in self.pieces:
+            if piece.x is x and piece.y is y:
+                return piece
+
+    # after effects that occur after a move is completed
+    def after_effects(self, pieces):
+        return pieces
+
+    # generate new board
+    def generate_board(self, pieces):
+        pieces = self.after_effects(pieces)
+        return Wildebeest("B", pieces, self.int_1, self.int_2, self.int_3) \
+               if self.player_turn is "W" else \
+               Wildebeest("W", pieces, self.int_1, self.int_2, self.int_3)
+
     # generator function yields boards for every possible move
     def possible_moves(self):
         board = self.get_board()
+        pieces = self.pieces[:]
         if self.player_turn is "W":
             friendly_pieces = WHITE_ID
             enemy_pieces = BLACK_ID
-        if self.player_turn is "B":
+        else:
             friendly_pieces = BLACK_ID
             enemy_pieces = WHITE_ID
 
@@ -234,46 +281,58 @@ class Wildebeest(object):
             if piece.id in friendly_pieces:
                 # serpent
                 if piece.id is "S" or piece.id is "s":
-                    print "{0}: {1}".format(piece.id, self.legal_piece_coordinates(piece, friendly_pieces))
-                # old woman
-                if piece.id is "O" or piece.id is "o":
-                    print "{0}: {1}".format(piece.id, self.legal_piece_coordinates(piece, friendly_pieces))
-                # grand empress
-                if piece.id is "E" or piece.id is "e":
-                    print "{0}: {1}".format(piece.id, self.legal_piece_coordinates(piece, friendly_pieces))
-                # prince joey
-                if piece.id is "J" or piece.id is "j":
-                    print "{0}: {1}".format(piece.id, self.legal_piece_coordinates(piece, friendly_pieces))
-                # catapult
-                if piece.id is "C" or piece.id is "c":
-                    print "{0}: {1}".format(piece.id, self.legal_piece_coordinates(piece, friendly_pieces))
+                    for move in self.legal_piece_coordinates(piece, friendly_pieces):
+                        # skip enemy; serpent cannot move into enemy piece
+                        if board[move[0]][move[1]] in enemy_pieces:
+                            continue
+                        # remove old piece
+                        if piece in pieces:
+                            pieces.remove(piece)
+                        # add new piece
+                        pieces.append(Piece(piece.id, move[0], move[1]))
+                        # poison adjacent pieces
+                        removed_pieces = [] # to track empress
+                        for i in range(-1, 2):
+                            for j in range(-1, 2):
+                                if board[move[0] + i][move[1] + j] not in enemy_pieces or \
+                                   board[move[0] + i][move[1] + j] not in BIO_ID:
+                                    continue
+                                removed_pieces.append(self.get_piece(move[0] + i, move[1] + j))
+                                board[move[0] + i][move[1] + j] = "."
+                                pieces.remove(self.get_piece(move[0] + i, move[1] + j))
+                        # check if enemy old woman transforms into grand empress
+                        for removed_piece in removed_pieces:
+                            for i in range(-1, 2):
+                                for j in range(-1, 2):
+                                    if board[removed_piece.x + i][removed_piece.y + j] is "O":
+                                        pieces.remove(self.get_piece(removed_piece.x + i, removed_piece.y + j))
+                                        pieces.append(Piece("E", removed_piece.x + i, removed_piece.y + j))
+                                    if board[removed_piece.x + i][removed_piece.y + j] is "o":
+                                        pieces.remove(self.get_piece(removed_piece.x + i, removed_piece.y + j))
+                                        pieces.append(Piece("e", removed_piece.x + i, removed_piece.y + j))
+                        yield self.generate_board(pieces)
+                        board = self.get_board() # reset temp board
+                        pieces = self.pieces[:] # reset temp pieces
                 # gorilla
-                if piece.id is "G" or piece.id is "g":
-                    print "{0}: {1}".format(piece.id, self.legal_piece_coordinates(piece, friendly_pieces))
+                elif piece.id is "G" or piece.id is "g":
+                    pass
                 # golf cart
-                if piece.id is "X" or piece.id is "x":
-                    print "{0}: {1}".format(piece.id, self.legal_piece_coordinates(piece, friendly_pieces))
-                # beekeeper
-                if piece.id is "Z" or piece.id is "z":
-                    print "{0}: {1}".format(piece.id, self.legal_piece_coordinates(piece, friendly_pieces))
-                # king
-                if piece.id is "K" or piece.id is "k":
-                    print "{0}: {1}".format(piece.id, self.legal_piece_coordinates(piece, friendly_pieces))
-                # king with a jet pack
-                if piece.id is "W" or piece.id is "w":
-                    print "{0}: {1}".format(piece.id, self.legal_piece_coordinates(piece, friendly_pieces))
-                # pawn
-                if piece.id is "P" or piece.id is "p":
-                    print "{0}: {1}".format(piece.id, self.legal_piece_coordinates(piece, friendly_pieces))
-                # bishop
-                if piece.id is "B" or piece.id is "b":
-                    print "{0}: {1}".format(piece.id, self.legal_piece_coordinates(piece, friendly_pieces))
-                # knight
-                if piece.id is "N" or piece.id is "n":
-                    print "{0}: {1}".format(piece.id, self.legal_piece_coordinates(piece, friendly_pieces))
-                # rook
-                if piece.id is "R" or piece.id is "r":
-                    print "{0}: {1}".format(piece.id, self.legal_piece_coordinates(piece, friendly_pieces))
+                elif piece.id is "X" or piece.id is "x":
+                    pass
+                # pawn becomes time machine
+                elif piece.id is "P" or piece.id is "p":
+                    pass
+                # all other pieces
+                else:
+                    for move in self.legal_piece_coordinates(piece, friendly_pieces):
+                        # remove old piece
+                        if piece in pieces:
+                            pieces.remove(piece)
+                        # add new piece
+                        pieces.append(Piece(piece.id, move[0], move[1]))
+                        yield self.generate_board(pieces)
+                        board = self.get_board() # reset temp board
+                        pieces = self.pieces[:] # reset temp pieces
 
 # load board from stdin
 def load_board():
@@ -305,4 +364,5 @@ if __name__ == '__main__':
     
     wildebeest = load_board()
     print wildebeest
-    wildebeest.possible_moves()
+    for move in wildebeest.possible_moves():
+        print move
