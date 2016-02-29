@@ -275,7 +275,38 @@ class Wildebeest(object):
 
     # after effects that occur after a move is completed
     def after_effects(self, pieces):
+        board = self.get_board()
         # prince joey exploding
+        explode = []
+        joey_w, joey_b = None, None
+        for piece in pieces:
+            if piece.id is "J":
+                joey_w = piece
+            if piece.id is "j":
+                joey_b = piece
+        # check joey (white side)
+        if joey_w is not None:
+            counter = 0
+            for piece in pieces:
+                if piece.x is joey_w.x:
+                    counter += 1
+            if counter % 5 is 0:
+                explode.append(joey_w)
+        # check joey (black side)
+        if joey_b is not None:
+            counter = 0
+            for piece in pieces:
+                if piece.x is joey_b.x:
+                    counter += 1
+            if counter % 5 is 0:
+                explode.append(joey_b)
+        # explode joey if triggered
+        for joey in explode:
+            for i in range(-1, 2):
+                for j in range(-1, 2):
+                    if board[joey.x + i][joey.y + j] in WHITE_ID or \
+                       board[joey.x + i][joey.y + j] in BLACK_ID:
+                        pieces.remove(self.get_piece(joey.x + i, joey.y + j))
         # golf cart (charged)
         return pieces
 
