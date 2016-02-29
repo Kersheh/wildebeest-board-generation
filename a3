@@ -93,6 +93,37 @@ class Wildebeest(object):
         board = self.get_board()
         coordinates = []
 
+        # catapult flings piece (can fling paralyzed piece, comes before Beekeeper check)
+        if piece.id is not "H" or piece.id is not "h":
+            for i in range(-1, 2):
+                for j in range(-1, 2):
+                    # skip out-of-bounds coordinates
+                    if piece.x + i < 0 or piece.x + i > 10 or \
+                       piece.y + j < 0 or piece.y + j > 10:
+                        continue
+                    # skip current coordinate
+                    if i is 0 and j is 0:
+                        continue
+                    if board[piece.x + i][piece.y + j] in friendly_pieces:
+                        if board[piece.x + i][piece.y + j] is "C" or \
+                           board[piece.x + i][piece.y + j] is "c":
+                            for m in range(2, 11):
+                                if piece.x + i * m < 0 or piece.x + i * m > 10 or \
+                                   piece.y + j * m < 0 or piece.y + j * m > 10:
+                                    continue
+                                # skip friendly pieces
+                                if board[piece.x + i * m][piece.y + j * m] in friendly_pieces:
+                                    continue
+                                # skip king or gorilla; piece cannot land on them
+                                if board[piece.x + i * m][piece.y + j * m] is "K" or \
+                                   board[piece.x + i * m][piece.y + j * m] is "k" or \
+                                   board[piece.x + i * m][piece.y + j * m] is "W" or \
+                                   board[piece.x + i * m][piece.y + j * m] is "w" or \
+                                   board[piece.x + i * m][piece.y + j * m] is "G" or \
+                                   board[piece.x + i * m][piece.y + j * m] is "g":
+                                    continue
+                                coordinates.append((piece.x + i * m, piece.y + j * m))
+
         # skip piece if paralyzed by enemy Beekeeper
         if piece.id is not "X" and piece.id is not "x" and \
            piece.id is not "H" and piece.id is not "h":
@@ -113,6 +144,11 @@ class Wildebeest(object):
                     # skip current coordinate
                     if i is 0 and j is 0:
                         continue
+                    # catapult cannot capture pieces
+                    if piece.id is "C" or piece.id is "c":
+                        if board[piece.x + i][piece.y + j] in WHITE_ID or \
+                           board[piece.x + i][piece.y + j] in BLACK_ID:
+                            continue
                     # skip friendly pieces (except Gorilla)
                     if piece.id is not "G" and piece.id is not "g":
                         if board[piece.x + i][piece.y + j] in friendly_pieces:
@@ -265,6 +301,7 @@ class Wildebeest(object):
                         if board[piece.x][piece.y - i] in WHITE_ID or \
                            board[piece.x][piece.y - i] in BLACK_ID:
                             left = False
+
         return coordinates
 
     # get Piece object belonging to board at given coordinate
@@ -272,10 +309,144 @@ class Wildebeest(object):
         for piece in self.pieces:
             if piece.x is x and piece.y is y:
                 return piece
+        return None
 
     # after effects that occur after a move is completed
     def after_effects(self, pieces):
-        board = self.get_board()
+        # serpent poison
+        serpents = []
+        for piece in pieces:
+            if piece.id is "S" or piece.id is "s":
+                serpents.append(piece)
+        for piece in serpents:
+            removed_pieces = [] # to track for empress
+            for i in range(-1, 2):
+                for j in range(-1, 2):
+                    # skip out-of-bounds coordinates
+                    if piece.x + i < 0 or piece.x + i > 10 or \
+                       piece.y + j < 0 or piece.y + j > 10:
+                        continue
+                    # skip serpent
+                    if i is 0 and j is 0:
+                        continue
+                    for adjacent_piece in pieces:
+                        if adjacent_piece.x is piece.x + i and \
+                           adjacent_piece.y is piece.y + j and \
+                           adjacent_piece.id in BIO_ID:
+                            if piece.id is "S" and adjacent_piece.id in BLACK_ID:
+                                removed_pieces.append(adjacent_piece)
+                                pieces.remove(adjacent_piece)
+                            if piece.id is "s" and adjacent_piece.id in WHITE_ID:
+                                removed_pieces.append(adjacent_piece)
+                                pieces.remove(adjacent_piece)
+            # check if enemy old woman transforms into grand empress
+            for removed_piece in removed_pieces:
+                for i in range(-1, 2):
+                    for j in range(-1, 2):
+                        # skip out-of-bounds coordinates
+                        if removed_piece.x + i < 0 or removed_piece.x + i > 10 or \
+                           removed_piece.y + j < 0 or removed_piece.y + j > 10:
+                            continue
+                        # skip removed piece
+                        if i is 0 and j is 0:
+                            continue
+                        for adjacent_piece in pieces:
+                            if adjacent_piece.x is removed_piece.x + i and \
+                               adjacent_piece.y is removed_piece.y + j:
+                                if piece.id is "S" and adjacent_piece.id is "o":
+                                    # try block in case of two serpents removing each other
+                                    try:
+                                        pieces.remove(piece) # remove serpent
+                                    except:
+                                        pass
+                                    pieces.append(Piece("e", adjacent_piece.x, adjacent_piece.y))
+                                    pieces.remove(adjacent_piece)
+                                if piece.id is "s" and adjacent_piece.id is "O":
+                                    # try block in case of two serpents removing each other
+                                    try:
+                                        pieces.remove(piece) # remove serpent
+                                    except:
+                                        pass
+                                    pieces.append(Piece("E", adjacent_piece.x, adjacent_piece.y))
+                                    pieces.remove(adjacent_piece)
+
+        # golf cart (charged - time machine)
+        cart_w = False
+        cart_b = False
+        same_column = False
+        for piece in pieces:
+            # white time machine
+            if piece.id is "H":
+                cart_w = True
+            # black time machine
+            if piece.id is "h": 
+                cart_b = True
+            # white pawn in middle (charges black golf cart)
+            if piece.id is "P" and piece.x is 5:
+                cart_b = True
+            # black pawn in middle (charges white golf cart)
+            if piece.id is "p" and piece.x is 5:
+                cart_w = True
+        # check both golf carts charged in the same column
+        if cart_w is True and cart_b is True:
+            for piece in pieces:
+                if piece.id is "X":
+                    cart_w_y = piece.y
+                if piece.id is "x":
+                    cart_b_y = piece.y
+            if cart_w_y is cart_b_y:
+                same_column = True
+        # white golf cart (charged)
+        for piece in pieces:
+            if piece.id is "X" and cart_w is True:
+                for removed_piece in pieces:
+                    if removed_piece.y is piece.y:
+                        pieces.remove(removed_piece)
+                if not same_column:
+                    if piece.x is 0:
+                        pieces.append(Piece(piece.id, 10, piece.y))
+                    if piece.x is 10:
+                        pieces.append(Piece(piece.id, 0, piece.y))
+                break
+        # black golf cart (charged)
+        for piece in pieces:
+            if piece.id is "x" and cart_b is True:
+                for removed_piece in pieces:
+                    if removed_piece.y is piece.y:
+                        pieces.remove(removed_piece)
+                if not same_column:
+                    if piece.x is 0:
+                        pieces.append(Piece(piece.id, 10, piece.y))
+                    if piece.x is 10:
+                        pieces.append(Piece(piece.id, 0, piece.y))
+                break
+
+        # check transporter pads for pieces
+        pad = []
+        for piece in pieces:
+            if piece.x is 3 and piece.y is 1:
+                pad.append(piece)
+            if piece.x is 3 and piece.y is 9:
+                pad.append(piece)
+            if piece.x is 7 and piece.y is 1:
+                pad.append(piece)
+            if piece.x is 7 and piece.y is 9:
+                pad.append(piece)
+        # transport pieces
+        for piece in pad:
+            if piece.x is 3 and piece.y is 1:
+                pieces.remove(piece)
+                pieces.append(Piece(piece.id, 7, 9))
+            if piece.x is 3 and piece.y is 9:
+                pieces.remove(piece)
+                pieces.append(Piece(piece.id, 3, 1))
+            if piece.x is 7 and piece.y is 1:
+                pieces.remove(piece)
+                pieces.append(Piece(piece.id, 3, 9))
+            if piece.x is 7 and piece.y is 9:
+                pieces.remove(piece)
+                pieces.append(Piece(piece.id, 7, 1))
+
         # prince joey exploding
         explode = []
         joey_w, joey_b = None, None
@@ -304,10 +475,9 @@ class Wildebeest(object):
         for joey in explode:
             for i in range(-1, 2):
                 for j in range(-1, 2):
-                    if board[joey.x + i][joey.y + j] in WHITE_ID or \
-                       board[joey.x + i][joey.y + j] in BLACK_ID:
-                        pieces.remove(self.get_piece(joey.x + i, joey.y + j))
-        # golf cart (charged)
+                    for piece in pieces:
+                        if piece.x is joey.x + i and piece.y is joey.y + j:
+                            pieces.remove(piece)
         return pieces
 
     # generate new board
@@ -330,42 +500,8 @@ class Wildebeest(object):
 
         for piece in self.pieces:
             if piece.id in friendly_pieces:
-                # serpent
-                if piece.id is "S" or piece.id is "s":
-                    for move in self.legal_piece_coordinates(piece, friendly_pieces):
-                        # skip enemy; serpent cannot move into enemy piece
-                        if board[move[0]][move[1]] in enemy_pieces:
-                            continue
-                        # remove old piece
-                        if piece in pieces:
-                            pieces.remove(piece)
-                        # add new piece
-                        pieces.append(Piece(piece.id, move[0], move[1]))
-                        # poison adjacent pieces
-                        removed_pieces = [] # to track empress
-                        for i in range(-1, 2):
-                            for j in range(-1, 2):
-                                if board[move[0] + i][move[1] + j] not in enemy_pieces or \
-                                   board[move[0] + i][move[1] + j] not in BIO_ID:
-                                    continue
-                                removed_pieces.append(self.get_piece(move[0] + i, move[1] + j))
-                                board[move[0] + i][move[1] + j] = "."
-                                pieces.remove(self.get_piece(move[0] + i, move[1] + j))
-                        # check if enemy old woman transforms into grand empress
-                        for removed_piece in removed_pieces:
-                            for i in range(-1, 2):
-                                for j in range(-1, 2):
-                                    if board[removed_piece.x + i][removed_piece.y + j] is "O":
-                                        pieces.remove(self.get_piece(removed_piece.x + i, removed_piece.y + j))
-                                        pieces.append(Piece("E", removed_piece.x + i, removed_piece.y + j))
-                                    if board[removed_piece.x + i][removed_piece.y + j] is "o":
-                                        pieces.remove(self.get_piece(removed_piece.x + i, removed_piece.y + j))
-                                        pieces.append(Piece("e", removed_piece.x + i, removed_piece.y + j))
-                        yield self.generate_board(pieces)
-                        board = self.get_board() # reset temp board
-                        pieces = self.pieces[:] # reset temp pieces
                 # gorilla
-                elif piece.id is "G" or piece.id is "g":
+                if piece.id is "G" or piece.id is "g":
                     for move in self.legal_piece_coordinates(piece, friendly_pieces):
                         # cannot push gorilla
                         if board[move[0]][move[1]] is "G" or board[move[0]][move[1]] is "g":
@@ -488,5 +624,8 @@ if __name__ == '__main__':
     
     wildebeest = load_board()
     print wildebeest
+    i = 0
     for move in wildebeest.possible_moves():
+        print "board.{0:03d}".format(i)
         print move
+        i += 1
