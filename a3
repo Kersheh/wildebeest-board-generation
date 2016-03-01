@@ -376,9 +376,10 @@ class Wildebeest(object):
         # serpent poison
         serpents = []
         for piece in pieces:
-            if piece.id is "S" or piece.id is "s":
+            if piece.id is "S" or piece.id is "s" or piece.id is "E" or piece.id is "e":
                 serpents.append(piece)
         for piece in serpents:
+            empress = False
             removed_pieces = [] # to track for empress
             for i in range(-1, 2):
                 for j in range(-1, 2):
@@ -393,42 +394,49 @@ class Wildebeest(object):
                         if adjacent_piece.x is piece.x + i and \
                            adjacent_piece.y is piece.y + j and \
                            adjacent_piece.id in BIO_ID:
-                            if piece.id is "S" and adjacent_piece.id in BLACK_ID:
-                                removed_pieces.append(adjacent_piece)
-                                pieces.remove(adjacent_piece)
-                            if piece.id is "s" and adjacent_piece.id in WHITE_ID:
-                                removed_pieces.append(adjacent_piece)
-                                pieces.remove(adjacent_piece)
-            # check if enemy old woman transforms into grand empress
-            for removed_piece in removed_pieces:
-                for i in range(-1, 2):
-                    for j in range(-1, 2):
-                        # skip out-of-bounds coordinates
-                        if removed_piece.x + i < 0 or removed_piece.x + i > 10 or \
-                           removed_piece.y + j < 0 or removed_piece.y + j > 10:
-                            continue
-                        # skip removed piece
-                        if i is 0 and j is 0:
-                            continue
-                        for adjacent_piece in pieces:
-                            if adjacent_piece.x is removed_piece.x + i and \
-                               adjacent_piece.y is removed_piece.y + j:
-                                if piece.id is "S" and adjacent_piece.id is "o":
-                                    # try block in case of two serpents removing each other
-                                    try:
-                                        pieces.remove(piece) # remove serpent
-                                    except:
-                                        pass
-                                    pieces.append(Piece("e", adjacent_piece.x, adjacent_piece.y))
+                            if adjacent_piece.id in BLACK_ID:
+                                if piece.id is "S" or piece.id is "E":
+                                    removed_pieces.append(adjacent_piece)
                                     pieces.remove(adjacent_piece)
-                                if piece.id is "s" and adjacent_piece.id is "O":
-                                    # try block in case of two serpents removing each other
-                                    try:
-                                        pieces.remove(piece) # remove serpent
-                                    except:
-                                        pass
-                                    pieces.append(Piece("E", adjacent_piece.x, adjacent_piece.y))
+                                    if piece.id is "E":
+                                        empress = True
+                            if adjacent_piece.id in WHITE_ID:
+                                if piece.id is "s" or piece.id is "e":
+                                    removed_pieces.append(adjacent_piece)
                                     pieces.remove(adjacent_piece)
+                                    if piece.id is "e":
+                                        empress = True
+            # check if enemy old woman transforms into grand empress from serpent
+            if not empress:
+                for removed_piece in removed_pieces:
+                    for i in range(-1, 2):
+                        for j in range(-1, 2):
+                            # skip out-of-bounds coordinates
+                            if removed_piece.x + i < 0 or removed_piece.x + i > 10 or \
+                               removed_piece.y + j < 0 or removed_piece.y + j > 10:
+                                continue
+                            # skip removed piece
+                            if i is 0 and j is 0:
+                                continue
+                            for adjacent_piece in pieces:
+                                if adjacent_piece.x is removed_piece.x + i and \
+                                   adjacent_piece.y is removed_piece.y + j:
+                                    if piece.id is "S" and adjacent_piece.id is "o":
+                                        # try block in case of two serpents removing each other
+                                        try:
+                                            pieces.remove(piece) # remove serpent
+                                        except:
+                                            pass
+                                        pieces.append(Piece("e", adjacent_piece.x, adjacent_piece.y))
+                                        pieces.remove(adjacent_piece)
+                                    if piece.id is "s" and adjacent_piece.id is "O":
+                                        # try block in case of two serpents removing each other
+                                        try:
+                                            pieces.remove(piece) # remove serpent
+                                        except:
+                                            pass
+                                        pieces.append(Piece("E", adjacent_piece.x, adjacent_piece.y))
+                                        pieces.remove(adjacent_piece)
 
         # golf cart (charged - time machine)
         cart_w = False
