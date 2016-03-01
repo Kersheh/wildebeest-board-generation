@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import sys, fileinput
+import sys, subprocess, fileinput
 
 WHITE_ID = { "S", "O", "E", "J", "C", "G", "X", "H", "Z", "K", "W", "P", "B", "N", "R" }
 BLACK_ID = { "s", "o", "e", "j", "c", "g", "x", "h", "z", "k", "w", "p", "b", "n", "r" }
@@ -132,9 +132,9 @@ class Wildebeest(object):
 
         # moves like a king
         if piece.id is "S" or piece.id is "s" or piece.id is "O" or piece.id is "o" or \
-           piece.id is "E" or piece.id is "e" or piece.id is "J" or piece.id is "j" or \
-           piece.id is "C" or piece.id is "c" or piece.id is "G" or piece.id is "g" or \
-           piece.id is "Z" or piece.id is "z" or piece.id is "K" or piece.id is "k":
+           piece.id is "J" or piece.id is "j" or piece.id is "C" or piece.id is "c" or \
+           piece.id is "G" or piece.id is "g" or piece.id is "Z" or piece.id is "z" or \
+           piece.id is "K" or piece.id is "k":
             for i in range(-1, 2):
                 for j in range(-1, 2):
                     # skip out-of-bounds coordinates
@@ -143,6 +143,10 @@ class Wildebeest(object):
                         continue
                     # skip current coordinate
                     if i is 0 and j is 0:
+                        continue
+                    # skip gorilla; cannot capture it
+                    if board[piece.x + i][piece.y + j] is "G" or \
+                       board[piece.x + i][piece.y + j] is "g":
                         continue
                     # catapult cannot capture pieces
                     if piece.id is "C" or piece.id is "c":
@@ -164,20 +168,32 @@ class Wildebeest(object):
                         pass
                     else:
                         if board[piece.x + i][piece.y + j] not in friendly_pieces:
-                            coordinates.append((piece.x + i, piece.y + j))
+                            # skip gorilla; cannot capture it
+                            if board[piece.x + i][piece.y + j] is not "G" and \
+                               board[piece.x + i][piece.y + j] is not "g":
+                                coordinates.append((piece.x + i, piece.y + j))
                     if piece.x + j < 0 or piece.x + j > 10 or \
                        piece.y + i < 0 or piece.y + i > 10:
                         pass
                     else:
                         if board[piece.x + j][piece.y + i] not in friendly_pieces:
-                            coordinates.append((piece.x + j, piece.y + i))
+                            # skip gorilla; cannot capture it
+                            if board[piece.x + j][piece.y + i] is not "G" and \
+                               board[piece.x + j][piece.y + i] is not "g":
+                                coordinates.append((piece.x + j, piece.y + i))
 
         # moves like a golf cart (uncharged)
         if piece.id is "X" or piece.id is "x":
             if piece.y is not 0 and board[piece.x][piece.y - 1] not in friendly_pieces:
-                coordinates.append((piece.x, piece.y - 1))
+                # skip gorilla; cannot capture it
+                if board[piece.x][piece.y - 1] is not "G" and \
+                   board[piece.x][piece.y - 1] is not "g":
+                    coordinates.append((piece.x, piece.y - 1))
             if piece.y is not 10 and board[piece.x][piece.y + 1] not in friendly_pieces:
-                coordinates.append((piece.x, piece.y + 1))
+                # skip gorilla; cannot capture it
+                if board[piece.x][piece.y + 1] is not "G" and \
+                   board[piece.x][piece.y + 1] is not "g":
+                    coordinates.append((piece.x, piece.y + 1))
 
         # moves like a bishop (cuts off when path is blocked)
         if piece.id is "W" or piece.id is "w" or piece.id is "B" or piece.id is "b" or \
@@ -189,7 +205,12 @@ class Wildebeest(object):
                        board[piece.x - i][piece.y - i] in friendly_pieces:
                         up_left = False
                     else:
-                        coordinates.append((piece.x - i, piece.y - i))
+                        # skip gorilla; cannot capture it
+                        if board[piece.x - i][piece.y - i] is "G" or \
+                           board[piece.x - i][piece.y - i] is "g":
+                            up_left = False
+                        else:
+                            coordinates.append((piece.x - i, piece.y - i))
                         # if enemy piece found, restrict further movement
                         if board[piece.x - i][piece.y - i] in WHITE_ID or \
                            board[piece.x - i][piece.y - i] in BLACK_ID:
@@ -199,7 +220,12 @@ class Wildebeest(object):
                        board[piece.x - i][piece.y + i] in friendly_pieces:
                         up_right = False
                     else:
-                        coordinates.append((piece.x - i, piece.y + i))
+                        # skip gorilla; cannot capture it
+                        if board[piece.x - i][piece.y + i] is "G" or \
+                           board[piece.x - i][piece.y + i] is "g":
+                            up_right = False
+                        else:
+                            coordinates.append((piece.x - i, piece.y + i))
                         # if enemy piece found, restrict further movement
                         if board[piece.x - i][piece.y + i] in WHITE_ID or \
                            board[piece.x - i][piece.y + i] in BLACK_ID:
@@ -209,7 +235,12 @@ class Wildebeest(object):
                        board[piece.x + i][piece.y - i] in friendly_pieces:
                         down_left = False
                     else:
-                        coordinates.append((piece.x + i, piece.y - i))
+                        # skip gorilla; cannot capture it
+                        if board[piece.x + i][piece.y - i] is "G" or \
+                           board[piece.x + i][piece.y - i] is "g":
+                            down_left = False
+                        else:
+                            coordinates.append((piece.x + i, piece.y - i))
                         # if enemy piece found, restrict further movement
                         if board[piece.x + i][piece.y - i] in WHITE_ID or \
                            board[piece.x + i][piece.y - i] in BLACK_ID:
@@ -219,7 +250,12 @@ class Wildebeest(object):
                        board[piece.x + i][piece.y + i] in friendly_pieces:
                         down_right = False
                     else:
-                        coordinates.append((piece.x + i, piece.y + i))
+                        # skip gorilla; cannot capture it
+                        if board[piece.x + i][piece.y + i] is "G" or \
+                           board[piece.x + i][piece.y + i] is "g":
+                            down_right = False
+                        else:
+                            coordinates.append((piece.x + i, piece.y + i))
                         # if enemy piece found, restrict further movement
                         if board[piece.x + i][piece.y + i] in WHITE_ID or \
                            board[piece.x + i][piece.y + i] in BLACK_ID:
@@ -237,7 +273,9 @@ class Wildebeest(object):
         # overtake enemy piece like a pawn (white side)
         if piece.id is "P" and piece.x is not 10:
             for i in range(-1, 2, 2):
-                if piece.y + i > 0 and piece.y + i < 11:
+                if piece.y + i > 0 and piece.y + i < 11 and \
+                   board[piece.x + 1][piece.y + i] is not "G" and \
+                   board[piece.x + 1][piece.y + i] is not "g":
                     if board[piece.x + 1][piece.y + i] not in friendly_pieces:
                         if board[piece.x + 1][piece.y + i] in WHITE_ID or \
                            board[piece.x + 1][piece.y + i] in BLACK_ID:
@@ -255,7 +293,9 @@ class Wildebeest(object):
         # overtake enemy piece like a pawn (black side)
         if piece.id is "p" and piece.x is not 0:
             for i in range(-1, 2, 2):
-                if piece.y + i > 0 and piece.y + i < 11:
+                if piece.y + i > 0 and piece.y + i < 11 and \
+                   board[piece.x - 1][piece.y + i] is not "G" and \
+                   board[piece.x - 1][piece.y + i] is not "g":
                     if board[piece.x - 1][piece.y + i] not in friendly_pieces:
                         if board[piece.x - 1][piece.y + i] in WHITE_ID or \
                            board[piece.x - 1][piece.y + i] in BLACK_ID:
@@ -269,7 +309,12 @@ class Wildebeest(object):
                     if piece.x - i < 0 or board[piece.x - i][piece.y] in friendly_pieces:
                         up = False
                     else:
-                        coordinates.append((piece.x - i, piece.y))
+                        # skip gorilla; cannot capture it
+                        if board[piece.x - i][piece.y] is "G" or \
+                           board[piece.x - i][piece.y] is "g":
+                            up = False
+                        else:
+                            coordinates.append((piece.x - i, piece.y))
                         # if enemy piece found, restrict further movement
                         if board[piece.x - i][piece.y] in WHITE_ID or \
                            board[piece.x - i][piece.y] in BLACK_ID:
@@ -278,7 +323,12 @@ class Wildebeest(object):
                     if piece.y + i > 10 or board[piece.x][piece.y + i] in friendly_pieces:
                         right = False
                     else:
-                        coordinates.append((piece.x, piece.y + i))
+                        # skip gorilla; cannot capture it
+                        if board[piece.x][piece.y + i] is "G" or \
+                           board[piece.x][piece.y + i] is "g":
+                            right = False
+                        else:
+                            coordinates.append((piece.x, piece.y + i))
                         # if enemy piece found, restrict further movement
                         if board[piece.x][piece.y + i] in WHITE_ID or \
                            board[piece.x][piece.y + i] in BLACK_ID:
@@ -287,7 +337,12 @@ class Wildebeest(object):
                     if piece.x + i > 10 or board[piece.x + i][piece.y] in friendly_pieces:
                         down = False
                     else:
-                        coordinates.append((piece.x + i, piece.y))
+                        # skip gorilla; cannot capture it
+                        if board[piece.x + i][piece.y] is "G" or \
+                           board[piece.x + i][piece.y] is "g":
+                            down = False
+                        else:
+                            coordinates.append((piece.x + i, piece.y))
                         # if enemy piece found, restrict further movement
                         if board[piece.x + i][piece.y] in WHITE_ID or \
                            board[piece.x + i][piece.y] in BLACK_ID:
@@ -296,7 +351,12 @@ class Wildebeest(object):
                     if piece.y - i < 0 or board[piece.x][piece.y - i] in friendly_pieces:
                         left = False
                     else:
-                        coordinates.append((piece.x, piece.y - i))
+                        # skip gorilla; cannot capture it
+                        if board[piece.x][piece.y - i] is "G" or \
+                           board[piece.x][piece.y - i] is "g":
+                            left = False
+                        else:
+                            coordinates.append((piece.x, piece.y - i))
                         # if enemy piece found, restrict further movement
                         if board[piece.x][piece.y - i] in WHITE_ID or \
                            board[piece.x][piece.y - i] in BLACK_ID:
@@ -536,6 +596,7 @@ class Wildebeest(object):
                         yield self.generate_board(pieces)
                         board = self.get_board() # reset temp board
                         pieces = self.pieces[:] # reset temp pieces
+
                 # pawn becomes time machine
                 elif piece.id is "P" or piece.id is "p":
                     for move in self.legal_piece_coordinates(piece, friendly_pieces):
@@ -550,7 +611,6 @@ class Wildebeest(object):
                         # add new piece
                         else:
                             pieces.append(Piece(piece.id, move[0], move[1]))
-                        # charge enemy golf cart if pawn moves to the middle of the board
 
                         # remove enemy piece
                         if board[move[0]][move[1]] in enemy_pieces:
@@ -558,6 +618,7 @@ class Wildebeest(object):
                         yield self.generate_board(pieces)
                         board = self.get_board() # reset temp board
                         pieces = self.pieces[:] # reset temp pieces
+
                 # king 
                 elif piece.id is "K" or piece.id is "k":
                     for move in self.legal_piece_coordinates(piece, friendly_pieces):
@@ -579,6 +640,7 @@ class Wildebeest(object):
                         yield self.generate_board(pieces)
                         board = self.get_board() # reset temp board
                         pieces = self.pieces[:] # reset temp pieces
+
                 # all other pieces
                 else:
                     for move in self.legal_piece_coordinates(piece, friendly_pieces):
@@ -621,11 +683,10 @@ if __name__ == '__main__':
     if len(sys.argv) != 1:
         print "usage: ./a3 < [board_file.txt]"
         sys.exit(0)
-    
+
     wildebeest = load_board()
-    print wildebeest
     i = 0
     for move in wildebeest.possible_moves():
-        print "board.{0:03d}".format(i)
-        print move
+        with open("board.{0:03d}".format(i), "w") as output:
+            output.write("{0}".format(move))
         i += 1
