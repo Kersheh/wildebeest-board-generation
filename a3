@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import sys, subprocess, fileinput
+import sys, os, subprocess, fileinput
 
 WHITE_ID = { "S", "O", "E", "J", "C", "G", "X", "H", "Z", "K", "W", "P", "B", "N", "R" }
 BLACK_ID = { "s", "o", "e", "j", "c", "g", "x", "h", "z", "k", "w", "p", "b", "n", "r" }
@@ -683,6 +683,10 @@ if __name__ == '__main__':
     if len(sys.argv) != 1:
         print "usage: ./a3 < [board_file.txt]"
         sys.exit(0)
+
+    # delete previous boards
+    FNULL = open(os.devnull, 'w')
+    subprocess.call(["rm board.*"], shell=True, stdout=FNULL, stderr=subprocess.STDOUT)
 
     wildebeest = load_board()
     i = 0
